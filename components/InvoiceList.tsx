@@ -10,7 +10,10 @@ import {
   Loader2,
   X,
   Check,
-  AlertTriangle
+  AlertTriangle,
+  Eye,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { Invoice, InvoiceStatus, InvoiceType } from '../types';
 import { extractInvoiceData } from '../services/geminiService';
@@ -23,6 +26,7 @@ interface InvoiceListProps {
 const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onAddInvoice }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('全部');
+  const [expandedInvoiceId, setExpandedInvoiceId] = useState<string | null>(null);
   
   // OCR & Upload State
   const [isUploading, setIsUploading] = useState(false);
@@ -76,7 +80,11 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onAddInvoice }) => 
               date: extracted.date || new Date().toISOString().split('T')[0],
               dueDate: extracted.dueDate || new Date().toISOString().split('T')[0],
               status: InvoiceStatus.DRAFT,
-              type: InvoiceType.GENERAL
+              type: InvoiceType.GENERAL,
+              // Default empty for extended fields as OCR currently implies basic
+              items: [],
+              buyerName: '本公司',
+              sellerName: extracted.clientName || '',
             });
             setErrors({}); // Clear any previous errors
             setShowReviewModal(true);
@@ -168,6 +176,10 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onAddInvoice }) => 
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     
     return diffDays >= 0 && diffDays <= 7;
+  };
+
+  const toggleExpand = (id: string) => {
+    setExpandedInvoiceId(expandedInvoiceId === id ? null : id);
   };
 
   return (
@@ -265,41 +277,130 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onAddInvoice }) => 
             </thead>
             <tbody className="bg-white divide-y divide-slate-200">
               {filteredInvoices.map((inv) => (
-                <tr key={inv.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
-                    {inv.invoiceNo}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-                    {inv.clientName}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                    开票: {inv.date} <br/>
-                    <div className="flex items-center gap-1">
-                      <span className="text-xs">到期: {inv.dueDate}</span>
-                      {isDueSoon(inv) && (
-                        <div className="flex items-center text-orange-500" title="7天内到期">
-                          <AlertTriangle className="w-3 h-3" />
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
-                    ¥{inv.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                    ¥{inv.taxAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full border ${getStatusColor(inv.status)}`}>
-                      {inv.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button className="text-slate-400 hover:text-slate-600">
-                      <MoreHorizontal className="h-5 w-5" />
-                    </button>
-                  </td>
-                </tr>
+                <React.Fragment key={inv.id}>
+                  <tr 
+                    className={`
+                      transition-all duration-200 ease-in-out cursor-pointer
+                      hover:bg-blue-50 hover:shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:relative hover:z-10
+                      ${expandedInvoiceId === inv.id ? 'bg-blue-50/50' : 'bg-white'}
+                    `}
+                    onClick={() => toggleExpand(inv.id)}
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
+                      {inv.invoiceNo}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
+                      {inv.clientName}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                      开票: {inv.date} <br/>
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs">到期: {inv.dueDate}</span>
+                        {isDueSoon(inv) && (
+                          <div className="flex items-center text-orange-500" title="7天内到期">
+                            <AlertTriangle className="w-3 h-3" />
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
+                      ¥{inv.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                      ¥{inv.taxAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full border ${getStatusColor(inv.status)}`}>
+                        {inv.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleExpand(inv.id);
+                        }}
+                        className="text-blue-600 hover:text-blue-800 flex items-center justify-end gap-1 ml-auto"
+                      >
+                        {expandedInvoiceId === inv.id ? (
+                           <>收起 <ChevronUp className="h-4 w-4" /></>
+                        ) : (
+                           <>查看详情 <ChevronDown className="h-4 w-4" /></>
+                        )}
+                      </button>
+                    </td>
+                  </tr>
+                  
+                  {/* Expandable Detail Row */}
+                  {expandedInvoiceId === inv.id && (
+                    <tr className="bg-slate-50/60 shadow-inner">
+                      <td colSpan={7} className="p-0 border-b border-slate-200">
+                         <div className="overflow-hidden animate-expand-detail">
+                            <div className="p-6">
+                               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6">
+                                  <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
+                                     <h4 className="text-xs font-bold text-slate-500 uppercase mb-3 flex items-center">
+                                       <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mr-2"></div>
+                                       销售方信息
+                                     </h4>
+                                     <div className="space-y-1">
+                                        <p className="text-sm font-medium text-slate-900">{inv.sellerName || inv.clientName || '-'}</p>
+                                        <p className="text-sm text-slate-500"><span className="text-slate-400 mr-2">税号:</span>{inv.sellerTaxId || '-'}</p>
+                                     </div>
+                                  </div>
+                                  <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
+                                     <h4 className="text-xs font-bold text-slate-500 uppercase mb-3 flex items-center">
+                                       <div className="w-1.5 h-1.5 rounded-full bg-green-500 mr-2"></div>
+                                       购买方信息
+                                     </h4>
+                                     <div className="space-y-1">
+                                        <p className="text-sm font-medium text-slate-900">{inv.buyerName || '本公司'}</p>
+                                        <p className="text-sm text-slate-500"><span className="text-slate-400 mr-2">税号:</span>{inv.buyerTaxId || '-'}</p>
+                                     </div>
+                                  </div>
+                               </div>
+                               
+                               {/* Items Table */}
+                               <div className="border border-slate-200 rounded-lg overflow-hidden bg-white shadow-sm">
+                                  <table className="min-w-full divide-y divide-slate-200">
+                                     <thead className="bg-slate-100">
+                                        <tr>
+                                           <th className="px-4 py-2 text-left text-xs font-medium text-slate-500">货物或应税劳务名称</th>
+                                           <th className="px-4 py-2 text-right text-xs font-medium text-slate-500">数量</th>
+                                           <th className="px-4 py-2 text-right text-xs font-medium text-slate-500">单价</th>
+                                           <th className="px-4 py-2 text-right text-xs font-medium text-slate-500">金额</th>
+                                           <th className="px-4 py-2 text-right text-xs font-medium text-slate-500">税率</th>
+                                           <th className="px-4 py-2 text-right text-xs font-medium text-slate-500">税额</th>
+                                        </tr>
+                                     </thead>
+                                     <tbody className="divide-y divide-slate-200">
+                                        {inv.items && inv.items.length > 0 ? (
+                                          inv.items.map((item, idx) => (
+                                             <tr key={idx}>
+                                                <td className="px-4 py-2 text-sm text-slate-900">{item.name}</td>
+                                                <td className="px-4 py-2 text-sm text-slate-500 text-right">{item.quantity}</td>
+                                                <td className="px-4 py-2 text-sm text-slate-500 text-right">¥{item.unitPrice.toLocaleString()}</td>
+                                                <td className="px-4 py-2 text-sm text-slate-500 text-right">¥{item.amount.toLocaleString()}</td>
+                                                <td className="px-4 py-2 text-sm text-slate-500 text-right">{(item.taxRate * 100).toFixed(0)}%</td>
+                                                <td className="px-4 py-2 text-sm text-slate-500 text-right">¥{item.taxAmount.toLocaleString()}</td>
+                                             </tr>
+                                          ))
+                                        ) : (
+                                           <tr>
+                                             <td colSpan={6} className="px-4 py-6 text-center text-sm text-slate-400">
+                                               无明细数据
+                                             </td>
+                                           </tr>
+                                        )}
+                                     </tbody>
+                                  </table>
+                               </div>
+                            </div>
+                         </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
               ))}
               {filteredInvoices.length === 0 && (
                  <tr>

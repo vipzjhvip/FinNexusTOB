@@ -12,16 +12,30 @@ export enum InvoiceType {
   GENERAL = '通用发票'
 }
 
+export interface InvoiceItem {
+  name: string;
+  quantity: number;
+  unitPrice: number;
+  amount: number;
+  taxRate: number;
+  taxAmount: number;
+}
+
 export interface Invoice {
   id: string;
   invoiceNo: string;
-  clientName: string;
+  clientName: string; // Generally treated as the "Counterparty"
+  buyerName?: string;
+  buyerTaxId?: string;
+  sellerName?: string;
+  sellerTaxId?: string;
   amount: number;
   taxAmount: number;
   date: string;
   dueDate: string;
   status: InvoiceStatus;
   type: InvoiceType;
+  items?: InvoiceItem[];
 }
 
 export interface FinancialMetric {
