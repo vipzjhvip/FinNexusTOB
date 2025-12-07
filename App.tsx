@@ -38,15 +38,15 @@ const App: React.FC = () => {
       case 'reports':
         return (
           <div className="flex flex-col items-center justify-center h-96 text-slate-400">
-            <p className="text-xl font-medium">Reports Module</p>
-            <p className="text-sm">Under development for this demo.</p>
+            <p className="text-xl font-medium">报表模块</p>
+            <p className="text-sm">功能开发中。</p>
           </div>
         );
       case 'settings':
         return (
           <div className="flex flex-col items-center justify-center h-96 text-slate-400">
-            <p className="text-xl font-medium">Settings</p>
-            <p className="text-sm">Configure Tenant, Users, and Roles here.</p>
+            <p className="text-xl font-medium">系统设置</p>
+            <p className="text-sm">在此配置租户、用户和权限角色。</p>
           </div>
         );
       default:

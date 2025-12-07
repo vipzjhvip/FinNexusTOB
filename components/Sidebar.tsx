@@ -17,11 +17,11 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ currentRoute, onChangeRoute, isOpen }) => {
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'invoices', label: 'Invoices & Tax', icon: FileText },
-    { id: 'reports', label: 'Financial Reports', icon: PieChart },
-    { id: 'ai-assistant', label: 'AI Financial Insight', icon: Bot },
-    { id: 'settings', label: 'Settings', icon: Settings },
+    { id: 'dashboard', label: '仪表盘', icon: LayoutDashboard },
+    { id: 'invoices', label: '发票与税务', icon: FileText },
+    { id: 'reports', label: '财务报表', icon: PieChart },
+    { id: 'ai-assistant', label: 'AI 财务洞察', icon: Bot },
+    { id: 'settings', label: '系统设置', icon: Settings },
   ];
 
   return (
@@ -69,13 +69,13 @@ const Sidebar: React.FC<SidebarProps> = ({ currentRoute, onChangeRoute, isOpen }
               JD
             </div>
             <div className="ml-3">
-              <p className="text-sm font-medium text-white">John Doe</p>
+              <p className="text-sm font-medium text-white">管理员</p>
               <p className="text-xs text-slate-400">Admin</p>
             </div>
           </div>
           <button className="w-full flex items-center px-3 py-2 text-sm font-medium text-red-400 hover:bg-slate-800 rounded-md">
             <LogOut className="mr-3 h-5 w-5" />
-            Sign Out
+            退出登录
           </button>
         </div>
       </div>

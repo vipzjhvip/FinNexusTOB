@@ -12,7 +12,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ contextData }) => {
     {
       id: 'welcome',
       role: 'model',
-      text: "Hello! I'm your FinNexus AI assistant. I have access to your current invoices and financial charts. Ask me about your revenue trends, outstanding payments, or tax liabilities.",
+      text: "您好！我是您的 FinNexus 财务助手。我可以访问您的发票和财务图表数据。您可以问我关于收入趋势、待付款项或税务负债的问题。",
       timestamp: new Date()
     }
   ]);
@@ -58,7 +58,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ contextData }) => {
       const errorMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'model',
-        text: "I'm sorry, I encountered an error connecting to the AI service. Please check your API key and connection.",
+        text: "抱歉，连接 AI 服务时出现错误。请检查您的网络连接。",
         timestamp: new Date(),
         isError: true
       };
@@ -77,7 +77,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ contextData }) => {
             <Sparkles className="w-5 h-5 text-indigo-600" />
           </div>
           <div>
-            <h3 className="font-bold text-slate-900">FinAI Copilot</h3>
+            <h3 className="font-bold text-slate-900">FinAI 智能助手</h3>
             <p className="text-xs text-slate-500">Powered by Gemini 2.5 Flash</p>
           </div>
         </div>
@@ -124,7 +124,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ contextData }) => {
                 </div>
                 <div className="bg-white p-4 rounded-2xl rounded-tl-none border border-slate-200 shadow-sm flex items-center gap-2">
                   <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
-                  <span className="text-sm text-slate-500">Thinking...</span>
+                  <span className="text-sm text-slate-500">思考中...</span>
                 </div>
              </div>
           </div>
@@ -139,7 +139,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ contextData }) => {
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask about your finances, e.g., 'What is my total tax liability?'"
+            placeholder="询问您的财务状况，例如：'我目前的税务风险如何？'"
             className="w-full pl-4 pr-12 py-3 bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
             disabled={isLoading}
           />
@@ -157,7 +157,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ contextData }) => {
           </button>
         </form>
         <p className="text-center text-xs text-slate-400 mt-2">
-          AI may display inaccurate info, including about people, so double-check its responses.
+          AI 可能生成不准确的信息，请务必核实。
         </p>
       </div>
     </div>

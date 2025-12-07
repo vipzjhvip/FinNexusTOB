@@ -9,7 +9,8 @@ import {
   AlertCircle,
   Loader2,
   X,
-  Check
+  Check,
+  AlertTriangle
 } from 'lucide-react';
 import { Invoice, InvoiceStatus, InvoiceType } from '../types';
 import { extractInvoiceData } from '../services/geminiService';
@@ -21,7 +22,7 @@ interface InvoiceListProps {
 
 const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onAddInvoice }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('All');
+  const [statusFilter, setStatusFilter] = useState<string>('全部');
   
   // OCR & Upload State
   const [isUploading, setIsUploading] = useState(false);
@@ -29,10 +30,13 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onAddInvoice }) => 
   const [reviewData, setReviewData] = useState<Partial<Invoice>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Error/Validation State
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
   const filteredInvoices = invoices.filter(inv => {
     const matchesSearch = inv.clientName.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           inv.invoiceNo.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'All' || inv.status === statusFilter;
+    const matchesStatus = statusFilter === '全部' || inv.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
@@ -74,9 +78,10 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onAddInvoice }) => 
               status: InvoiceStatus.DRAFT,
               type: InvoiceType.GENERAL
             });
+            setErrors({}); // Clear any previous errors
             setShowReviewModal(true);
           } catch (error) {
-            alert("Failed to process invoice. Please try again.");
+            alert("发票处理失败，请重试。");
           }
         }
         setIsUploading(false);
@@ -86,14 +91,56 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onAddInvoice }) => 
     } catch (error) {
       console.error(error);
       setIsUploading(false);
-      alert("Error reading file.");
+      alert("读取文件错误。");
     }
   };
 
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    let isValid = true;
+
+    if (!reviewData.invoiceNo?.trim()) {
+      newErrors.invoiceNo = '发票号码不能为空';
+      isValid = false;
+    }
+    if (!reviewData.clientName?.trim()) {
+      newErrors.clientName = '客户名称不能为空';
+      isValid = false;
+    }
+    if ((reviewData.amount || 0) <= 0) {
+      newErrors.amount = '金额必须大于0';
+      isValid = false;
+    }
+    if ((reviewData.taxAmount || 0) < 0) {
+      newErrors.taxAmount = '税额不能为负数';
+      isValid = false;
+    }
+    if (!reviewData.date) {
+      newErrors.date = '开票日期不能为空';
+      isValid = false;
+    }
+    if (!reviewData.dueDate) {
+      newErrors.dueDate = '到期日不能为空';
+      isValid = false;
+    }
+    
+    // Check due date is after or same as issue date
+    if (reviewData.date && reviewData.dueDate && new Date(reviewData.dueDate) < new Date(reviewData.date)) {
+      newErrors.dueDate = '到期日不能早于开票日期';
+      isValid = false;
+    }
+
+    setErrors(newErrors);
+    return isValid;
+  };
+
   const handleSaveInvoice = () => {
-    onAddInvoice(reviewData as Invoice);
-    setShowReviewModal(false);
-    setReviewData({});
+    if (validateForm()) {
+      onAddInvoice(reviewData as Invoice);
+      setShowReviewModal(false);
+      setReviewData({});
+      setErrors({});
+    }
   };
 
   const handleReviewChange = (field: keyof Invoice, value: any) => {
@@ -101,14 +148,34 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onAddInvoice }) => 
       ...prev,
       [field]: value
     }));
+    // Clear specific error when user types
+    if (errors[field]) {
+      setErrors(prev => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+    }
+  };
+
+  // Helper to check if invoice is due soon (within 7 days) and not paid
+  const isDueSoon = (invoice: Invoice) => {
+    if (invoice.status === InvoiceStatus.PAID || invoice.status === InvoiceStatus.VOID || invoice.status === InvoiceStatus.DRAFT) return false;
+    
+    const today = new Date();
+    const due = new Date(invoice.dueDate);
+    const diffTime = due.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    return diffDays >= 0 && diffDays <= 7;
   };
 
   return (
     <div className="space-y-6 relative">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">Invoices</h2>
-          <p className="text-sm text-slate-500 mt-1">Manage incoming and outgoing invoices</p>
+          <h2 className="text-2xl font-bold text-slate-900">发票管理</h2>
+          <p className="text-sm text-slate-500 mt-1">管理进项和销项发票</p>
         </div>
         <div className="flex gap-3">
            {/* File Upload */}
@@ -122,7 +189,7 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onAddInvoice }) => 
              ) : (
                <Download className="w-4 h-4 mr-2" />
              )}
-             {isUploading ? 'Processing...' : 'Import OCR'}
+             {isUploading ? '识别中...' : 'OCR 导入发票'}
              <input 
                ref={fileInputRef}
                type="file" 
@@ -135,7 +202,7 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onAddInvoice }) => 
            
            <button className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 flex items-center shadow-sm">
              <Plus className="w-4 h-4 mr-2" />
-             Create Invoice
+             新建发票
            </button>
         </div>
       </div>
@@ -146,7 +213,7 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onAddInvoice }) => 
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-5 w-5" />
           <input 
             type="text" 
-            placeholder="Search invoice # or client..." 
+            placeholder="搜索发票号或客户..." 
             className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -159,7 +226,7 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onAddInvoice }) => 
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
           >
-            <option value="All">All Status</option>
+            <option value="全部">全部状态</option>
             {Object.values(InvoiceStatus).map(s => (
               <option key={s} value={s}>{s}</option>
             ))}
@@ -174,25 +241,25 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onAddInvoice }) => 
             <thead className="bg-slate-50">
               <tr>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                  Invoice No.
+                  发票号码
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                  Client
+                  客户/供应商
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                  Date
+                  日期
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                  Amount
+                  金额
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                  Tax
+                  税额
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                  Status
+                  状态
                 </th>
                 <th scope="col" className="relative px-6 py-3">
-                  <span className="sr-only">Actions</span>
+                  <span className="sr-only">操作</span>
                 </th>
               </tr>
             </thead>
@@ -206,14 +273,21 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onAddInvoice }) => 
                     {inv.clientName}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                    Issued: {inv.date} <br/>
-                    <span className="text-xs">Due: {inv.dueDate}</span>
+                    开票: {inv.date} <br/>
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs">到期: {inv.dueDate}</span>
+                      {isDueSoon(inv) && (
+                        <div className="flex items-center text-orange-500" title="7天内到期">
+                          <AlertTriangle className="w-3 h-3" />
+                        </div>
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
-                    ${inv.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    ¥{inv.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                    ${inv.taxAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    ¥{inv.taxAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full border ${getStatusColor(inv.status)}`}>
@@ -232,7 +306,7 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onAddInvoice }) => 
                    <td colSpan={7} className="px-6 py-10 text-center text-slate-500">
                      <div className="flex flex-col items-center justify-center">
                        <AlertCircle className="h-10 w-10 text-slate-300 mb-2" />
-                       <p>No invoices found matching your criteria.</p>
+                       <p>未找到符合条件的发票。</p>
                      </div>
                    </td>
                  </tr>
@@ -249,7 +323,7 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onAddInvoice }) => 
             <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
               <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                 <FileCheck className="w-5 h-5 text-blue-600" />
-                Review Extracted Data
+                复核识别结果
               </h3>
               <button 
                 onClick={() => setShowReviewModal(false)}
@@ -262,69 +336,75 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onAddInvoice }) => 
             <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Invoice No</label>
+                  <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">发票号码 <span className="text-red-500">*</span></label>
                   <input 
                     type="text" 
                     value={reviewData.invoiceNo || ''} 
                     onChange={(e) => handleReviewChange('invoiceNo', e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none ${errors.invoiceNo ? 'border-red-500 bg-red-50' : 'border-slate-300'}`}
                   />
+                  {errors.invoiceNo && <p className="text-xs text-red-500 mt-1">{errors.invoiceNo}</p>}
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Client Name</label>
+                  <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">客户名称 <span className="text-red-500">*</span></label>
                   <input 
                     type="text" 
                     value={reviewData.clientName || ''} 
                     onChange={(e) => handleReviewChange('clientName', e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none ${errors.clientName ? 'border-red-500 bg-red-50' : 'border-slate-300'}`}
                   />
+                  {errors.clientName && <p className="text-xs text-red-500 mt-1">{errors.clientName}</p>}
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Amount</label>
+                  <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">金额 <span className="text-red-500">*</span></label>
                   <input 
                     type="number" 
                     value={reviewData.amount || 0} 
                     onChange={(e) => handleReviewChange('amount', parseFloat(e.target.value))}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none ${errors.amount ? 'border-red-500 bg-red-50' : 'border-slate-300'}`}
                   />
+                  {errors.amount && <p className="text-xs text-red-500 mt-1">{errors.amount}</p>}
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Tax Amount</label>
+                  <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">税额</label>
                   <input 
                     type="number" 
                     value={reviewData.taxAmount || 0} 
                     onChange={(e) => handleReviewChange('taxAmount', parseFloat(e.target.value))}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none ${errors.taxAmount ? 'border-red-500 bg-red-50' : 'border-slate-300'}`}
                   />
+                  {errors.taxAmount && <p className="text-xs text-red-500 mt-1">{errors.taxAmount}</p>}
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Issue Date</label>
+                  <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">开票日期 <span className="text-red-500">*</span></label>
                   <input 
                     type="date" 
                     value={reviewData.date || ''} 
                     onChange={(e) => handleReviewChange('date', e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none ${errors.date ? 'border-red-500 bg-red-50' : 'border-slate-300'}`}
                   />
+                  {errors.date && <p className="text-xs text-red-500 mt-1">{errors.date}</p>}
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Due Date</label>
+                  <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">到期日 <span className="text-red-500">*</span></label>
                   <input 
                     type="date" 
                     value={reviewData.dueDate || ''} 
                     onChange={(e) => handleReviewChange('dueDate', e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none ${errors.dueDate ? 'border-red-500 bg-red-50' : 'border-slate-300'}`}
                   />
+                  {errors.dueDate && <p className="text-xs text-red-500 mt-1">{errors.dueDate}</p>}
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Type</label>
+                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">发票类型</label>
                 <select 
                   value={reviewData.type || InvoiceType.GENERAL}
                   onChange={(e) => handleReviewChange('type', e.target.value)}
@@ -340,14 +420,14 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onAddInvoice }) => 
                 onClick={() => setShowReviewModal(false)}
                 className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors"
               >
-                Cancel
+                取消
               </button>
               <button 
                 onClick={handleSaveInvoice}
                 className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
               >
                 <Check className="w-4 h-4" />
-                Confirm & Save
+                确认保存
               </button>
             </div>
           </div>

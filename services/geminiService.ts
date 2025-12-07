@@ -38,7 +38,7 @@ export const sendMessageToGemini = async (
       }
     });
 
-    return response.text || "I processed the request but received no text response.";
+    return response.text || "我处理了请求，但没有收到文本回复。";
   } catch (error) {
     console.error("Gemini API Error:", error);
     throw new Error("Failed to communicate with the AI assistant.");
@@ -61,7 +61,7 @@ export const extractInvoiceData = async (base64Data: string, mimeType: string): 
             }
           },
           {
-             text: "Analyze this image. If it is an invoice, extract the following details into a JSON object: invoiceNo, clientName, amount (number), taxAmount (number), date (YYYY-MM-DD), dueDate (YYYY-MM-DD). If a specific field is not visible, use null."
+             text: "Analyze this image. It is likely a Chinese or English invoice. Extract the following details into a JSON object: invoiceNo, clientName (or payer/purchaser), amount (number), taxAmount (number), date (YYYY-MM-DD), dueDate (YYYY-MM-DD). If a specific field is not visible, use null. For Chinese invoices, translate fields to match these keys."
           }
         ]
       },

@@ -1,15 +1,15 @@
 export enum InvoiceStatus {
-  DRAFT = 'Draft',
-  PENDING = 'Pending',
-  PAID = 'Paid',
-  OVERDUE = 'Overdue',
-  VOID = 'Void'
+  DRAFT = '草稿',
+  PENDING = '待处理',
+  PAID = '已付款',
+  OVERDUE = '逾期',
+  VOID = '作废'
 }
 
 export enum InvoiceType {
-  VAT_SPECIAL = 'VAT Special',
-  VAT_NORMAL = 'VAT Normal',
-  GENERAL = 'General'
+  VAT_SPECIAL = '增值税专票',
+  VAT_NORMAL = '增值税普票',
+  GENERAL = '通用发票'
 }
 
 export interface Invoice {

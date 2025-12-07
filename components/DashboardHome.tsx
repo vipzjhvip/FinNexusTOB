@@ -28,18 +28,15 @@ const DashboardHome: React.FC<DashboardHomeProps> = ({ metrics, chartData }) => 
   return (
     <div className="space-y-6">
       <div className="mb-2">
-        <h2 className="text-2xl font-bold text-slate-900">Financial Overview</h2>
-        <p className="text-sm text-slate-500">Real-time update • Last sync: 2 mins ago</p>
+        <h2 className="text-2xl font-bold text-slate-900">财务总览</h2>
+        <p className="text-sm text-slate-500">实时数据 • 最后同步: 2 分钟前</p>
       </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {metrics.map((metric, index) => {
           const isPositive = metric.trend === 'up';
-          const isNeutral = metric.trend === 'neutral';
           // Logic: "Expenses" going up is bad (red), "Revenue" going up is good (green)
-          // Simplified logic: generally green is good, red is bad.
-          // For Expense, we invert visual meaning (not implemented for simplicity, sticking to trend).
           const trendColor = isPositive ? 'text-green-600' : 'text-red-600';
           const TrendIcon = isPositive ? TrendingUp : TrendingDown;
           
@@ -52,7 +49,7 @@ const DashboardHome: React.FC<DashboardHomeProps> = ({ metrics, chartData }) => 
                 <div>
                   <p className="text-sm font-medium text-slate-500">{metric.name}</p>
                   <h3 className="text-2xl font-bold text-slate-900 mt-1">
-                    ${metric.value.toLocaleString()}
+                    ¥{metric.value.toLocaleString()}
                   </h3>
                 </div>
                 <div className="p-2 bg-blue-50 rounded-lg">
@@ -64,7 +61,7 @@ const DashboardHome: React.FC<DashboardHomeProps> = ({ metrics, chartData }) => 
                 <span className={`text-sm font-medium ${trendColor}`}>
                   {Math.abs(metric.change)}%
                 </span>
-                <span className="text-sm text-slate-400 ml-2">vs last month</span>
+                <span className="text-sm text-slate-400 ml-2">环比上月</span>
               </div>
             </div>
           );
@@ -75,7 +72,7 @@ const DashboardHome: React.FC<DashboardHomeProps> = ({ metrics, chartData }) => 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Cash Flow Area Chart */}
         <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-          <h3 className="text-lg font-bold text-slate-900 mb-4">Cash Flow Analysis</h3>
+          <h3 className="text-lg font-bold text-slate-900 mb-4">现金流分析</h3>
           <div className="h-80 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
@@ -90,14 +87,15 @@ const DashboardHome: React.FC<DashboardHomeProps> = ({ metrics, chartData }) => 
                   </linearGradient>
                 </defs>
                 <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `$${value}`} />
+                <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `¥${value}`} />
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                 <Tooltip 
                   contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0' }}
                   itemStyle={{ fontSize: '12px' }}
+                  formatter={(value: number) => [`¥${value}`, '']}
                 />
-                <Area type="monotone" dataKey="income" stroke="#2563eb" strokeWidth={2} fillOpacity={1} fill="url(#colorIncome)" name="Income" />
-                <Area type="monotone" dataKey="expense" stroke="#ef4444" strokeWidth={2} fillOpacity={1} fill="url(#colorExpense)" name="Expenses" />
+                <Area type="monotone" dataKey="income" stroke="#2563eb" strokeWidth={2} fillOpacity={1} fill="url(#colorIncome)" name="收入" />
+                <Area type="monotone" dataKey="expense" stroke="#ef4444" strokeWidth={2} fillOpacity={1} fill="url(#colorExpense)" name="支出" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -105,7 +103,7 @@ const DashboardHome: React.FC<DashboardHomeProps> = ({ metrics, chartData }) => 
 
         {/* Profit Bar Chart */}
         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-          <h3 className="text-lg font-bold text-slate-900 mb-4">Net Profit</h3>
+          <h3 className="text-lg font-bold text-slate-900 mb-4">净利润</h3>
           <div className="h-80 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData}>
@@ -114,8 +112,9 @@ const DashboardHome: React.FC<DashboardHomeProps> = ({ metrics, chartData }) => 
                 <Tooltip 
                    cursor={{fill: '#f1f5f9'}}
                    contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0' }}
+                   formatter={(value: number) => [`¥${value}`, '']}
                 />
-                <Bar dataKey="profit" fill="#10b981" radius={[4, 4, 0, 0]} name="Profit" />
+                <Bar dataKey="profit" fill="#10b981" radius={[4, 4, 0, 0]} name="利润" />
               </BarChart>
             </ResponsiveContainer>
           </div>
